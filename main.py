@@ -20,7 +20,7 @@ class IdahoStreamer(object):
     @app.route('/filter', methods=['POST'])
     def push_data(self, request):
         global name
-        #request.setHeader('Content-Type', 'application/json')
+        request.setHeader('Content-Type', 'application/json')
         name = request.args.get('data', ["world"])[0]
         return name
 
@@ -34,13 +34,14 @@ class IdahoStreamer(object):
         foo = mongo.foo
         test = foo.test
         result = yield test.insert({"something": data})
+        log.msg(result)
         returnValue(result)
 
 
 if __name__ == '__main__':
     streamer = IdahoStreamer()
     streamer.app.run('localhost', 8080)
-    #streamer.put_something_in_db(5)
+    streamer.put_something_in_db(5)
 
 
 
