@@ -6,7 +6,7 @@ from twisted.python import log
 
 from idaho_streamer.util import sleep
 from idaho_streamer.error import BadRequest, NotAcceptable, NotFound
-from idaho_streamer.db import fake_data, get_db
+from idaho_streamer.db import db
 
 app = Klein()
 MAX_POST_BODY = 1024*1024 # 1MB
@@ -21,7 +21,6 @@ def parse_json_body(content):
     except ValueError:
         raise BadRequest("Malformed JSON in request body")
     return result
-
 
 @app.handle_errors(BadRequest)
 def bad_request(request, failure):
@@ -40,19 +39,22 @@ def not_acceptable(request, failure):
     request.setResponseCode(406)
     return failure.getErrorMessage()
 
+
 @app.route("/filter", methods=["POST"])
 def filter_post(request):
     params = parse_json_body(request.content.read())
     fromDate = params.get("fromDate", (dt.datetime.now() - dt.timedelta(weeks=1)).isoformat())
     toDate = params.get("toDate", dt.datetime.now().isoformat())
     bbox = params.get("bbox")
-    delay = params.get("delay", 0.1)
+    delay = params.get("delay", 0.0)
     return stream_data(request, fromDate, toDate, bbox, delay)
+
 
 @inlineCallbacks
 def stream_data(request, fromDate, toDate, bbox, delay):
-    db = yield get_db
-    docs = yield db.idaho_tiles.find({}, fields={"_id": False})
-    for doc in docs:
-        request.write(json.dumps(doc))
-        yield sleep(delay)
+    docs, d  = yield db.idaho_tiles.find({}, fields={"_id": False}, cursor=True)
+    while docs:
+        for doc in docs:
+            request.write(json.dumps(doc))
+            yield sleep(delay)
+        docs, d = yield d
