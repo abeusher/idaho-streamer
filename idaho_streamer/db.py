@@ -1,8 +1,10 @@
 import os
+import os.path
 from twisted.python import log
 from twisted.internet import ssl
 from twisted.internet.defer import inlineCallbacks, returnValue
 from txmongo.connection import ConnectionPool
+from txmongo import filter as qf
 
 COLLECTIONS = ["idaho_tiles"]
 
@@ -11,27 +13,18 @@ assert "MONGO_CONNECTION_STRING" in os.environ
 mongo_url = os.environ.get("MONGO_CONNECTION_STRING")
 
 
-#put something in a database
+from bson.json_util import loads
+fixture_file = os.path.join(os.path.dirname(__file__), "..", "test", "fixtures", "tile_dump.json")
 
-from itertools import cycle
+with open(fixture_file) as f:
+    fixture_data = loads(f.read())
 
-fake_post = {"fromDate": "Tue Aug 06 02:23:21 +0000 2013", "toDate": ""}
-d1 = {"zxy": [12, 2632, 1616], "url": "http://bullshit.com", "idahoID": "cd1adcb2-84ca-45da-8185-5a3bb8e34b2b",
-"bounds": [51.328125, 35.389, 51.416, 35.460], "center": [51.37, 35.424], "created_at": "Tue Aug 06 02:23:21 +0000 2013"}
-d2 = d1.copy()
-d2['created_at'] = "Wed Aug 07 02:23:21 +0000 2013"
-d3 = d1.copy()
-d3['created_at'] = "Fri Aug 09 02:23:21 +0000 2013"
-fake_data = [d1, d2, d3]
-fake_cycle = cycle(fake_data)
-
-
-connection = None
 if use_ssl:
     connection = ConnectionPool(mongo_url, ssl_context_factory=ssl.ClientContextFactory())
 else:
     connection = ConnectionPool(mongo_url)
 db = connection.get_default_database()
+
 
 @inlineCallbacks
 def create_collections(db):
@@ -41,8 +34,11 @@ def create_collections(db):
         if key not in current_collections:
             yield db.create_collection(key)
             created.append(key)
+    # idaho_tiles index
+    db.idaho_tiles.create_index(qf.sort(qf.ASCENDING("_acquisitionDate")))
     log.msg("Created collections: {}".format(",".join(created)))
     returnValue(created)
+
 
 @inlineCallbacks
 def drop_collections(db):
@@ -56,9 +52,11 @@ def drop_collections(db):
     log.msg("Dropped collections: {}".format(",".join(dropped)))
     returnValue(dropped)
 
+
 @inlineCallbacks
 def populate(db):
-    yield db.idaho_tiles.insert_many(fake_data)
+    yield db.idaho_tiles.insert_many(fixture_data)
+
 
 @inlineCallbacks
 def init():

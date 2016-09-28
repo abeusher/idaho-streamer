@@ -1,4 +1,9 @@
+import os.path
 from setuptools import setup
+from pip.req import parse_requirements
+
+install_reqs = parse_requirements(os.path.join(os.path.dirname(__file__), "requirements.txt"))
+reqs = [str(ir.req) for ir in install_reqs]
 
 setup(
     name="idaho-streamer",
@@ -10,5 +15,6 @@ setup(
                  "MongoDB data source to be populated by something else."),
     license="BSD",
     url="https://github.com/timbr-io/idaho-streamer",
-    packages=["idaho_streamer"]
+    packages=["idaho_streamer"],
+    install_requires=reqs
 )
