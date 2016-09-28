@@ -6,7 +6,7 @@ from twisted.python import log
 
 from idaho_streamer.util import sleep
 from idaho_streamer.error import BadRequest, NotAcceptable, NotFound
-from idaho_streamer.db import fake_data
+from idaho_streamer.db import fake_data, get_db
 
 app = Klein()
 MAX_POST_BODY = 1024*1024 # 1MB
@@ -40,7 +40,6 @@ def not_acceptable(request, failure):
     request.setResponseCode(406)
     return failure.getErrorMessage()
 
-
 @app.route("/filter", methods=["POST"])
 def filter_post(request):
     params = parse_json_body(request.content.read())
@@ -52,6 +51,8 @@ def filter_post(request):
 
 @inlineCallbacks
 def stream_data(request, fromDate, toDate, bbox, delay):
-    for doc in fake_data:
+    db = yield get_db
+    docs = yield db.idaho_tiles.find({}, fields={"_id": False})
+    for doc in docs:
         request.write(json.dumps(doc))
         yield sleep(delay)
