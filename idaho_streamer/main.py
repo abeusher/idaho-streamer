@@ -4,7 +4,8 @@ from bson.json_util import dumps as json_dumps
 from klein import Klein
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import log
-from shapely.geometry import shape
+from shapely.geometry import shape, Polygon
+from dateutil.parser import parse as parse_date
 
 from idaho_streamer.util import sleep
 from idaho_streamer.error import BadRequest, NotAcceptable, NotFound
@@ -22,6 +23,20 @@ def parse_json_body(content):
     except ValueError:
         raise BadRequest("Malformed JSON in request body")
     return result
+
+def parse_bbox(bbox):
+    bbox = bbox.split(",")
+    try:
+        assert len(bbox) == 4
+        bbox = [float(v) for v in bbox]
+        bbox = Polygon([[bbox[0], bbox[1]],
+                        [bbox[0], bbox[3]],
+                        [bbox[2], bbox[3]],
+                        [bbox[2], bbox[1]],
+                        [bbox[0], bbox[1]]])
+    except AssertionError, ValueError:
+        raise BadRequest("Expected 4 comma separated numbers.  Got {}".format(bbox))
+    return bbox
 
 @app.handle_errors(BadRequest)
 def bad_request(request, failure):
@@ -44,10 +59,15 @@ def not_acceptable(request, failure):
 @app.route("/filter", methods=["POST"])
 def filter_post(request):
     params = parse_json_body(request.content.read())
-    fromDate = params.get("fromDate", (dt.datetime.now() - dt.timedelta(weeks=1)).isoformat())
-    toDate = params.get("toDate", dt.datetime.now().isoformat())
+    fromDate = parse_date(params.get("fromDate", (dt.datetime.now() - dt.timedelta(weeks=1)).isoformat()))
+    toDate = parse_date(params.get("toDate", dt.datetime.now().isoformat()))
     bbox = params.get("bbox")
-    delay = params.get("delay", 0.0)
+    if bbox is not None:
+        bbox = parse_bbox(bbox)
+    try:
+        delay = float(params.get("delay", "0.0"))
+    except ValueError:
+        raise BadRequest("Delay should be a floating point number")
     request.setHeader('Content-Type', 'application/json')
     request.setResponseCode(200)
     return stream_data(request, fromDate, toDate, bbox, delay)
@@ -59,7 +79,7 @@ def stream_data(request, fromDate, toDate, bbox, delay):
                                          fields={"_id": False, "_acquisitionDate": False}, cursor=True)
     while docs:
         for doc in docs:
-            if bbox.intersects(shape(doc["bounds"])):
+            if bbox is None or bbox.intersects(shape(doc["geometry"])):
                 request.write(json_dumps(doc))
                 yield sleep(delay)
         docs, d = yield d
