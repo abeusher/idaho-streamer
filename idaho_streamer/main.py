@@ -24,13 +24,13 @@ def parse_json_body(content):
 
 
 @app.handle_errors(BadRequest)
-def not_acceptable(request, failure):
+def bad_request(request, failure):
     request.setResponseCode(400)
     return failure.getErrorMessage()
 
 
 @app.handle_errors(NotFound)
-def not_acceptable(request, failure):
+def not_found(request, failure):
     request.setResponseCode(404)
     return failure.getErrorMessage()
 
