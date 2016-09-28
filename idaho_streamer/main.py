@@ -47,6 +47,7 @@ def filter_post(request):
     bbox = params.get("bbox")
     delay = params.get("delay", 0.0)
     request.setHeader('Content-Type', 'application/json')
+    request.setResponseCode(200)
     return stream_data(request, fromDate, toDate, bbox, delay)
 
 
