@@ -26,15 +26,12 @@ fake_data = [d1, d2, d3]
 fake_cycle = cycle(fake_data)
 
 
-
-@inlineCallbacks
-def connect():
-    if use_ssl:
-        connection = yield ConnectionPool(mongo_url, ssl_context_factory=ssl.ClientContextFactory())
-    else:
-        connection = yield ConnectionPool(mongo_url)
-    returnValue(connection.get_default_database())
-
+connection = None
+if use_ssl:
+    connection = ConnectionPool(mongo_url, ssl_context_factory=ssl.ClientContextFactory())
+else:
+    connection = ConnectionPool(mongo_url)
+db = connection.get_default_database()
 
 @inlineCallbacks
 def create_collections(db):
@@ -65,12 +62,11 @@ def populate(db):
 
 @inlineCallbacks
 def init():
-    db = yield connect()
     yield drop_collections(db)
     yield create_collections(db)
     yield populate(db)
     c = yield db.idaho_tiles.count()
     log.msg("Database Ready. {} records present".format(c))
-    returnValue(db)
+    returnValue(connection)
 
-get_db = init()
+init()
