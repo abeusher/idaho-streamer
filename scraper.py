@@ -97,7 +97,7 @@ class IdahoScraper(object):
         if cnt > 0:
             return False
         return True
-        
+
     def idaho_search(self):
         res  = self.gbdx.catalog.search(startDate=self.start, endDate=self.end, filters=self.filters, types=['IDAHOImage'])
         filtered = [r for r in res if self.is_unique({"identifier": r['identifier']})]
@@ -136,8 +136,22 @@ class IdahoScraper(object):
                 time.sleep(self.polling_interval)
 
 
-if __name__ == '__main__':
-    with open('/Users/jamiepolackwich1/dockerfiles/idaho-scraper/.creds.json', 'r') as f:
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--credpath", help="filepath to json file with gbdx creds")
+    parser.add_argument("--mongo-host", default='192.168.99.100', help="mongo host address")
+    parser.add_argument("--mongo-port", type=int, default=27017, help="mongo port number")
+    parser.add_argument("--start", default='2016-09-15T01:46:53.568Z', help="timestamp from which to start polling imagery")
+    args = parser.parse_args() 
+
+    #parser.add_argument("--start", default='/Users/jamiepolackwich1/dockerfiles/idaho-scraper/.creds.json')
+
+    with open(args.credpath, 'r') as f:
         creds = json.load(f)
-    scraper = IdahoScraper('2016-09-15T01:46:53.568Z', creds)
+
+    scraper = IdahoScraper(args.start, creds, mongo_host=args.mongo_host, mongo_port=args.mongo_port)
     scraper.poll()
+
+if __name__ == '__main__':
+    main()
