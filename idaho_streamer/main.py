@@ -12,7 +12,6 @@ app = Klein()
 MAX_POST_BODY = 1024*1024 # 1MB
 
 def parse_json_body(content):
-    log.msg("CONTENT: {}".format(content))
     try:
         assert len(content) < MAX_POST_BODY
         result = json.loads(content)
@@ -47,6 +46,7 @@ def filter_post(request):
     toDate = params.get("toDate", dt.datetime.now().isoformat())
     bbox = params.get("bbox")
     delay = params.get("delay", 0.0)
+    request.setHeader('Content-Type', 'application/json')
     return stream_data(request, fromDate, toDate, bbox, delay)
 
 
