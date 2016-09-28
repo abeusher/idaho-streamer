@@ -1,8 +1,10 @@
 import datetime as dt
 import json
+from bson.json_util import dumps as json_dumps
 from klein import Klein
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import log
+from shapely.geometry import shape
 
 from idaho_streamer.util import sleep
 from idaho_streamer.error import BadRequest, NotAcceptable, NotFound
@@ -53,9 +55,11 @@ def filter_post(request):
 
 @inlineCallbacks
 def stream_data(request, fromDate, toDate, bbox, delay):
-    docs, d  = yield db.idaho_tiles.find({}, fields={"_id": False}, cursor=True)
+    docs, d  = yield db.idaho_tiles.find({"_acquisitionDate": {"$gte": fromDate, "$lt": toDate}},
+                                         fields={"_id": False, "_acquisitionDate": False}, cursor=True)
     while docs:
         for doc in docs:
-            request.write(json.dumps(doc))
-            yield sleep(delay)
+            if bbox.intersects(shape(doc["bounds"])):
+                request.write(json_dumps(doc))
+                yield sleep(delay)
         docs, d = yield d
