@@ -64,7 +64,12 @@ def not_acceptable(request, failure):
 def filter_post(request):
     params = parse_json_body(request.content.read())
     fromDate = parse_date(params.get("fromDate", (dt.datetime.now() - dt.timedelta(weeks=1)).isoformat()))
-    toDate = parse_date(params.get("toDate", dt.datetime.now().isoformat()))
+    toDate = params.get("toDate")
+    enable_streaming = False
+    if toDate is None:
+        enable_streaming = True
+        toDate = dt.datetime.now().isoformat()
+    toDate = parse_date(toDate)
     bbox = params.get("bbox")
     if bbox is not None:
         bbox = parse_bbox(bbox)
@@ -75,7 +80,8 @@ def filter_post(request):
     request.setHeader('Content-Type', 'application/json')
     request.setResponseCode(200)
     last_id = yield backfill(request, fromDate, toDate, bbox, delay)
-    yield stream(request, last_id, bbox, delay)
+    if enable_streaming:
+        yield stream(request, last_id, bbox, delay)
 
 @inlineCallbacks
 def backfill(request, fromDate, toDate, bbox, delay):
