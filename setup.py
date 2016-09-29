@@ -21,7 +21,7 @@ setup(
         'console_scripts': [
             'idaho_poller = idaho_streamer.gbdx:main',
         ],
-    }
+    },
     packages=["idaho_streamer"],
     install_requires=reqs
 )
