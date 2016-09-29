@@ -36,6 +36,7 @@ def create_collections(db):
             created.append(key)
     # idaho_tiles index
     db.idaho_tiles.create_index(qf.sort(qf.ASCENDING("_acquisitionDate")))
+    db.idaho_tiles.create_index(qf.sort(qf.DESCENDING("id")))
     log.msg("Created collections: {}".format(",".join(created)))
     returnValue(created)
 
@@ -62,7 +63,7 @@ def populate(db):
 def init():
     yield drop_collections(db)
     yield create_collections(db)
-    yield populate(db)
+    # yield populate(db)
     c = yield db.idaho_tiles.count()
     log.msg("Database Ready. {} records present".format(c))
     returnValue(connection)
