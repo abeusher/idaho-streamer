@@ -17,6 +17,11 @@ setup(
                  "MongoDB data source to be populated by something else."),
     license="BSD",
     url="https://github.com/timbr-io/idaho-streamer",
+    entry_points = {
+        'console_scripts': [
+            'idaho_poller = idaho_streamer.gbdx:main',
+        ],
+    }
     packages=["idaho_streamer"],
     install_requires=reqs
 )
