@@ -1,8 +1,10 @@
 import os.path
 from setuptools import setup
 from pip.req import parse_requirements
+from pip.download import PipSession
 
-install_reqs = parse_requirements(os.path.join(os.path.dirname(__file__), "requirements.txt"))
+install_reqs = parse_requirements(os.path.join(os.path.dirname(__file__), "requirements.txt"),
+                                session=PipSession())
 reqs = [str(ir.req) for ir in install_reqs]
 
 setup(
