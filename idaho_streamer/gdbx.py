@@ -16,7 +16,7 @@ from shapely.geometry import Polygon, mapping
 from shapely.wkt import loads as wkt_loads
 import mercantile
 
-from idaho_streamer.db import db
+from idaho_streamer.db import db, init as init_db
 
 for key in ["GBDX_CLIENT_ID", "GBDX_CLIENT_SECRET", "GBDX_USERNAME", "GBDX_PASSWORD"]:
     assert key in os.environ
@@ -44,46 +44,39 @@ def populate_from_idaho_search(start_date, end_date):
     )
     log.msg("Found {} images from {} to {}".format(len(images), start_date.isoformat(), end_date.isoformat()))
     tiles = yield deferToThread(get_idaho_tiles, images)
-    log.msg("  resulting in {} tiles".format(len(tiles)))
+    log.msg("  resulting in {} footprints".format(len(tiles)))
     for tile in tiles:
         yield db.idaho_tiles.replace_one({"id": tile["id"]}, tile, upsert=True)
     log.msg("Added/Updated {} tiles".format(len(tiles)))
     returnValue(len(tiles))
 
 
-def collect_tiles(img, zoom, gbdx=gbdx):
+def generate_footprint(img, gbdx=gbdx):
     idaho_id = img['id']
-    bounds = wkt_loads(img['boundstr']).bounds
-    img_tiles = []
-    tiles = mercantile.tiles(bounds[0], bounds[1], bounds[2], bounds[3], zooms=[zoom])
-    for i,t in enumerate(tiles):
-        bnds = mercantile.bounds(t)
-        bbox = (bnds.west, bnds.south, bnds.east, bnds.north)
-        footprint = Polygon([[bbox[0], bbox[1]],
-                        [bbox[0], bbox[3]],
-                        [bbox[2], bbox[3]],
-                        [bbox[2], bbox[1]],
-                        [bbox[0], bbox[1]]])
-        obj = {
-            "type": "Feature",
-            "id": '{}z{}x{}y{}'.format(idaho_id, t.z, t.x, t.y),
-            "properties": {
-                "value": 100,
-                "idahoID": idaho_id,
-                "zxy": (t.z, t.x, t.y),
-                "bounds": bbox,
-                "center": mapping(footprint.centroid),
-                "catalogId": img['catalogId'],
-                "acquisitionDate": img['acquisitionDate']
-            },
-            "geometry": mapping(footprint)
-        }
-        img_tiles.append(obj)
-    return img_tiles
+    bbox = wkt_loads(img['boundstr']).bounds
+    footprint = Polygon([[bbox[0], bbox[1]],
+                    [bbox[0], bbox[3]],
+                    [bbox[2], bbox[3]],
+                    [bbox[2], bbox[1]],
+                    [bbox[0], bbox[1]]])
+    obj = {
+        "type": "Feature",
+        "id": idaho_id,
+        "properties": {
+            "idahoID": idaho_id,
+            "bounds": bbox,
+            "center": mapping(footprint.centroid),
+            "catalogId": img['catalogId'],
+            "acquisitionDate": img['acquisitionDate']
+        },
+        "geometry": mapping(footprint),
+        "_acquisitionDate": parse_date(img['acquisitionDate'])
+    }
+    return obj
 
 
-def get_idaho_tiles(images, zoom=12, gbdx=gbdx):
-    tiles = []
+def get_idaho_tiles(images, gbdx=gbdx):
+    footprints = []
     image_props = {i['identifier']: i['properties'] for i in images}
     info = gbdx.idaho.describe_images({'results':images})
     for cid, props in info.iteritems():
@@ -92,8 +85,8 @@ def get_idaho_tiles(images, zoom=12, gbdx=gbdx):
                 wv8 = part['WORLDVIEW_8_BAND']
                 wv8['catalogId'] = image_props[wv8['id']]['vendorDatasetIdentifier3']
                 wv8['acquisitionDate'] = image_props[wv8['id']]['acquisitionDate']
-                tiles += collect_tiles(wv8, zoom, gbdx=gbdx)
-    return tiles
+                footprints.append(generate_footprint(wv8, gbdx=gbdx))
+    return footprints
 
 
 @inlineCallbacks
@@ -116,6 +109,7 @@ def poll():
 
 @inlineCallbacks
 def run(start_date, poll_interval=3600):
+    yield init_db()
     yield backfill(start_date)
     task = LoopingCall(poll)
     task.start(poll_interval)
