@@ -13,11 +13,11 @@ assert "MONGO_CONNECTION_STRING" in os.environ
 mongo_url = os.environ.get("MONGO_CONNECTION_STRING")
 
 
-from bson.json_util import loads
-fixture_file = os.path.join(os.path.dirname(__file__), "..", "test", "fixtures", "tile_dump.json")
+# from bson.json_util import loads
+# fixture_file = os.path.join(os.path.dirname(__file__), "..", "test", "fixtures", "tile_dump.json")
 
-with open(fixture_file) as f:
-    fixture_data = loads(f.read())
+# with open(fixture_file) as f:
+#     fixture_data = loads(f.read())
 
 if use_ssl:
     connection = ConnectionPool(mongo_url, ssl_context_factory=ssl.ClientContextFactory())
@@ -35,8 +35,8 @@ def create_collections(db):
             yield db.create_collection(key)
             created.append(key)
     # idaho_tiles index
-    db.idaho_tiles.create_index(qf.sort(qf.ASCENDING("_acquisitionDate")))
-    db.idaho_tiles.create_index(qf.sort(qf.DESCENDING("id")))
+    yield db.idaho_tiles.create_index(qf.sort(qf.DESCENDING("_acquisitionDate")))
+    yield db.idaho_tiles.create_index(qf.sort(qf.DESCENDING("id")))
     log.msg("Created collections: {}".format(",".join(created)))
     returnValue(created)
 
@@ -61,11 +61,11 @@ def populate(db):
 
 @inlineCallbacks
 def init():
-    yield drop_collections(db)
+    # yield drop_collections(db)
     yield create_collections(db)
     # yield populate(db)
     c = yield db.idaho_tiles.count()
     log.msg("Database Ready. {} records present".format(c))
     returnValue(connection)
 
-init()
+# init()
