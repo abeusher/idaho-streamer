@@ -20,7 +20,7 @@ Currently, starting the server will drop and recreate the collections and fill t
 ## Usage (for testing)
 
 ```
-$ curl -X POST -d '{"startDate": "date string", "endDate": "date string", "bbox": "minx,miny,maxx,maxy", "delay": 0.1}' http://localhost:8080/stream
+$ curl -X POST -d '{"startDate": "date string", "endDate": "date string", "bbox": "minx,miny,maxx,maxy", "delay": 0.1}' http://localhost:8080/filter
 ```
 
 All parameters are optional, however a json object must be sent in the post body.  By default, the stream will return all tiles from the past week with no delay.

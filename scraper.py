@@ -85,10 +85,10 @@ class IdahoScraper(object):
 
     def setup(self):
         if self.coll.count() > 0:
-            self.since, self.until = next_timelimits(most_recent_adt(self.coll))
+            self.since = nudge_datetime(most_recent_adt(self.coll))
         else:
             self.since = parser.parse(self.start_time)
-            self.until = self.since + datetime.timedelta(days=7)
+        self.until = self.since + datetime.timedelta(days=7)
 
     def is_unique(self, search_params):
         cur = self.coll.find(search_params)
