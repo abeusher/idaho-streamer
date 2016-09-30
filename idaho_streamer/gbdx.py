@@ -47,7 +47,7 @@ def populate_from_idaho_search(start_date, end_date):
     log.msg("  resulting in {} footprints".format(len(tiles)))
     for tile in tiles:
         yield db.idaho_tiles.replace_one({"id": tile["id"]}, tile, upsert=True)
-    log.msg("Added/Updated {} tiles".format(len(tiles)))
+    log.msg("Added/Updated {} footprints".format(len(tiles)))
     returnValue(len(tiles))
 
 
@@ -94,7 +94,13 @@ def backfill(start_date):
     yield deferToThread(refresh_gbdx)
     while start_date < dt.datetime.now():
         end_date = start_date + dt.timedelta(days=1)
-        n = yield populate_from_idaho_search(start_date, end_date)
+        try:
+            n = yield populate_from_idaho_search(start_date, end_date)
+        except Exception as e:
+            log.msg("Error populating footprints [{}, {}]".format(start_date.isoformat(),
+                                                                       end_date.isoformat()))
+            yield deferToThread(refresh_gbdx)
+
         start_date = start_date + dt.timedelta(days=1)
 
 
@@ -103,7 +109,11 @@ def poll():
     yield refresh_gbdx()
     end_date = dt.datetime.now()
     start_date = end_date - dt.timedelta(days=1)
-    n = yield populate_from_idaho_search(start_date, end_date)
+    try:
+        n = yield populate_from_idaho_search(start_date, end_date)
+    except:
+        # Since we're polling we don't really care.  We'll try again
+        pass
     returnValue(n)
 
 
