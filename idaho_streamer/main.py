@@ -94,6 +94,7 @@ def backfill(request, fromDate, toDate, bbox, delay):
             last_id = doc["_id"]
             if bbox is None or bbox.intersects(shape(doc["geometry"])):
                 request.write(json_dumps(doc))
+                request.write("\n")
                 yield sleep(delay)
         docs, d = yield d
     returnValue(last_id)
@@ -106,6 +107,7 @@ def stream(request, from_id, bbox, delay):
         for doc in docs:
             if bbox is None or bbox.intersects(shape(doc["geometry"])):
                 request.write(json_dumps(doc))
+                request.write("\n")
                 yield sleep(delay)
         delta = (dt.datetime.now() - ref).total_seconds()
         yield sleep(max(0.0, POLL_INTERVAL - delta))
