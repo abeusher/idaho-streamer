@@ -6,7 +6,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from txmongo.connection import ConnectionPool
 from txmongo import filter as qf
 
-COLLECTIONS = ["idaho_tiles"]
+COLLECTIONS = ["idaho_tiles", "idaho_footprints"]
 
 use_ssl=False
 assert "MONGO_CONNECTION_STRING" in os.environ
@@ -35,8 +35,8 @@ def create_collections(db):
             yield db.create_collection(key)
             created.append(key)
     # idaho_tiles index
-    yield db.idaho_tiles.create_index(qf.sort(qf.DESCENDING("_acquisitionDate")))
-    yield db.idaho_tiles.create_index(qf.sort(qf.DESCENDING("id")))
+    yield db.idaho_footprints.create_index(qf.sort(qf.DESCENDING("_acquisitionDate")))
+    yield db.idaho_footprints.create_index(qf.sort(qf.DESCENDING("id")))
     log.msg("Created collections: {}".format(",".join(created)))
     returnValue(created)
 
