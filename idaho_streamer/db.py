@@ -68,4 +68,4 @@ def init():
     log.msg("Database Ready. {} records present".format(c))
     returnValue(connection)
 
-# init()
+init()
