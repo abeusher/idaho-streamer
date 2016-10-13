@@ -6,6 +6,8 @@ REST streaming API for getting updates about available IDAHO imagery.
 
 This repo uses Git LFS to store a data dump for testing.  Before cloning, setup Git LFS on your system via the instructions [here](https://git-lfs.github.com/).  After that `git clone` will also download the data dump.
 
+In order to use this repository, DigitalGlobe AWS credentials must be setup in a profile called `dg`.  Instructions for setting up awscli profiles can be found [in the AWS docs](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-multiple-profiles)
+
 ## Installation (for development)
 
 ```
