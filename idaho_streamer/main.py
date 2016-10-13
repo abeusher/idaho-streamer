@@ -43,6 +43,17 @@ def index(request):
     # TODO: disable directory listing
     return File(os.path.join(os.path.dirname(__file__), "public"))
 
+@app.route("/footprint/<string:idaho_id>")
+@inlineCallbacks
+def footprint(request, idaho_id="unknown"):
+    rec = yield db.idaho_footprints.find_one({"id": idaho_id})
+    if rec is None:
+        raise NotFound
+    else:
+        request.setHeader('Content-Type', 'application/json')
+        request.setResponseCode(200)
+        returnValue(json_dumps(rec))
+
 
 @app.route("/filter", methods=["POST"])
 @inlineCallbacks
@@ -97,9 +108,9 @@ def parse_bbox(bbox):
 
 @inlineCallbacks
 def backfill(request, fromDate, toDate, bbox, delay):
-    last_rec = yield db.idaho_tiles.find({}, fields={"_id": True}, limit=1, filter=qf.sort(qf.DESCENDING("_id")))
+    last_rec = yield db.idaho_footprints.find({}, fields={"_id": True}, limit=1, filter=qf.sort(qf.DESCENDING("_id")))
     last_id = last_rec[0]["_id"]
-    docs, d  = yield db.idaho_tiles.find({"_acquisitionDate": {"$gte": fromDate, "$lt": toDate}},
+    docs, d  = yield db.idaho_footprints.find({"_acquisitionDate": {"$gte": fromDate, "$lt": toDate}},
                                          fields={"_acquisitionDate": False}, cursor=True,
                                          filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
     while docs:
@@ -117,7 +128,7 @@ def backfill(request, fromDate, toDate, bbox, delay):
 def stream(request, from_id, bbox, delay):
     while True:
         ref = dt.datetime.now()
-        docs = yield db.idaho_tiles.find({"_id": {"$gt": from_id}}, filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
+        docs = yield db.idaho_footprints.find({"_id": {"$gt": from_id}}, filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
         for doc in docs:
             if bbox is None or bbox.intersects(shape(doc["geometry"])):
                 request.write(json_dumps(doc))
