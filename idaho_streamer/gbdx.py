@@ -5,6 +5,7 @@ log.startLogging(sys.stdout)
 import argparse
 import datetime as dt
 from itertools import chain
+import json
 
 from dateutil.parser import parse as parse_date
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -17,122 +18,82 @@ from shapely.wkt import loads as wkt_loads
 import mercantile
 
 from idaho_streamer.db import db, init as init_db
-
-for key in ["GBDX_CLIENT_ID", "GBDX_CLIENT_SECRET", "GBDX_USERNAME", "GBDX_PASSWORD"]:
-    assert key in os.environ
-
-gbdx = None
-def refresh_gbdx():
-    global gbdx
-    gbdx = Interface(client_id=os.environ.get("GBDX_CLIENT_ID"),
-                     client_secret=os.environ.get("GBDX_CLIENT_SECRET"),
-                     username=os.environ.get("GBDX_USERNAME"),
-                     password=os.environ.get("GBDX_PASSWORD"))
-refresh_gbdx()
+from idaho_streamer.aws import get_idaho_metadata, iterimages, next_batch, remove_batch
+from idaho_streamer.util import extract_idaho_metadata
 
 def dt_to_ts(dt, fmt='%Y-%m-%dT%H:%M:%S.%f'):
     s = dt.strftime(fmt)[:-3] + "Z"
     return s
 
 @inlineCallbacks
-def populate_from_idaho_search(start_date, end_date):
-    log.msg("Populating from IDAHO search...")
-    images = yield deferToThread(
-        gbdx.catalog.search, startDate=dt_to_ts(start_date), endDate=dt_to_ts(end_date),
-        filters=["(sensorPlatformName = 'WV02' OR sensorPlatformName ='WV03')"],
-        types=['IDAHOImage']
-    )
-    log.msg("Found {} images from {} to {}".format(len(images), start_date.isoformat(), end_date.isoformat()))
-    tiles = yield deferToThread(get_idaho_tiles, images)
-    log.msg("  resulting in {} footprints".format(len(tiles)))
-    for tile in tiles:
-        yield db.idaho_tiles.replace_one({"id": tile["id"]}, tile, upsert=True)
-    log.msg("Added/Updated {} footprints".format(len(tiles)))
-    returnValue(len(tiles))
+def populate(iterable):
+    for idaho_id in iterable:
+        footprint = yield generate_footprint(idaho_id)
+        if footprint is not None:
+            yield db.idaho_footprints.replace_one({"id": footprint["id"]}, footprint, upsert=True)
+            log.msg("Added/Updated record for Idaho Id: {}".format(idaho_id))
+        else:
+            log.msg("Ignored Idaho Id: {}".format(idaho_id))
 
 
-def generate_footprint(img, gbdx=gbdx):
-    idaho_id = img['id']
-    bbox = wkt_loads(img['boundstr']).bounds
-    footprint = Polygon([[bbox[0], bbox[1]],
+@inlineCallbacks
+def generate_footprint(idaho_id):
+    try:
+        md_files = yield deferToThread(get_idaho_metadata, idaho_id)
+    except AttributeError:
+        returnValue(None)
+    metadata = extract_idaho_metadata(md_files['IMD'], md_files['TIL'])
+    if metadata['satid'] in ['WV02', 'WV03'] and metadata['bandid'] == 'Multi':
+        bbox = metadata['bbox']
+        footprint = Polygon([[bbox[0], bbox[1]],
                     [bbox[0], bbox[3]],
                     [bbox[2], bbox[3]],
                     [bbox[2], bbox[1]],
                     [bbox[0], bbox[1]]])
-    obj = {
-        "type": "Feature",
-        "id": idaho_id,
-        "properties": {
-            "idahoID": idaho_id,
-            "bounds": bbox,
-            "center": mapping(footprint.centroid),
-            "catalogId": img['catalogId'],
-            "acquisitionDate": img['acquisitionDate']
-        },
-        "geometry": mapping(footprint),
-        "_acquisitionDate": parse_date(img['acquisitionDate'])
-    }
-    return obj
-
-
-def get_idaho_tiles(images, gbdx=gbdx):
-    footprints = []
-    image_props = {i['identifier']: i['properties'] for i in images}
-    info = gbdx.idaho.describe_images({'results':images})
-    for cid, props in info.iteritems():
-        for k, part in props['parts'].iteritems():
-            if 'WORLDVIEW_8_BAND' in part:
-                wv8 = part['WORLDVIEW_8_BAND']
-                wv8['catalogId'] = image_props[wv8['id']]['vendorDatasetIdentifier3']
-                wv8['acquisitionDate'] = image_props[wv8['id']]['acquisitionDate']
-                footprints.append(generate_footprint(wv8, gbdx=gbdx))
-    return footprints
+        obj = {
+            "type": "Feature",
+            "id": idaho_id,
+            "properties": metadata,
+            "geometry": mapping(footprint),
+            "_acquisitionDate": metadata['img_datetime_obj_utc']
+        }
+        obj['properties']['center'] = mapping(footprint.centroid)
+        returnValue(obj)
 
 
 @inlineCallbacks
-def backfill(start_date):
-    yield deferToThread(refresh_gbdx)
-    while start_date < dt.datetime.now():
-        end_date = start_date + dt.timedelta(days=1)
-        try:
-            n = yield populate_from_idaho_search(start_date, end_date)
-        except Exception as e:
-            log.msg("Error populating footprints [{}, {}]".format(start_date.isoformat(),
-                                                                       end_date.isoformat()))
-            yield deferToThread(refresh_gbdx)
-
-        start_date = start_date + dt.timedelta(days=1)
+def backfill():
+    yield populate(iterimages())
 
 
 @inlineCallbacks
 def poll():
-    yield refresh_gbdx()
-    end_date = dt.datetime.now()
-    start_date = end_date - dt.timedelta(days=1)
-    try:
-        n = yield populate_from_idaho_search(start_date, end_date)
-    except:
-        # Since we're polling we don't really care.  We'll try again
-        pass
-    returnValue(n)
+    more = True
+    while more:
+        batch = yield deferToThread(next_batch)
+        if len(batch) < 10:
+            more = False
+        ids = [json.loads(json.loads(rec.get_body())["Message"])["identifier"] for rec in batch]
+        yield populate(ids)
+        yield deferToThread(remove_batch, batch)
 
 
 @inlineCallbacks
-def run(start_date, poll_interval=3600):
+def run(interval):
     yield init_db()
-    yield backfill(start_date)
+    yield backfill()
+    log.msg("Done Backfilling.  Starting Live Stream...")
     task = LoopingCall(poll)
-    task.start(poll_interval)
+    task.start(interval)
     returnValue(task)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default='2016-01-01T00:00:00.000Z', help="timestamp from which to start polling imagery")
+    parser.add_argument("-i", "--interval", default=10.0, help="SQS polling interval in seconds")
     args = parser.parse_args()
-    start_date = parse_date(args.start)
 
-    run(start_date)
+    run(args.interval)
     reactor.run()
 
 if __name__ == '__main__':
