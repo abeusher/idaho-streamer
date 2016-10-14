@@ -57,15 +57,15 @@ def footprint(request, idaho_id="unknown"):
         returnValue(json_dumps(rec))
 
 
-@app.route("/<string:idaho_id>/toa.vrt")
+@app.route("/<string:idaho_id>/toa/<int:level>.vrt")
 @inlineCallbacks
-def toa_vrt(request, idaho_id="unknown"):
+def toa_vrt(request, idaho_id="unknown", level=0):
     rec = yield db.idaho_footprints.find_one({"id": idaho_id})
     if rec is None:
         raise NotFound
     request.setHeader("Content-Type","application/xml")
     request.setResponseCode(200)
-    vrt = yield deferToThread(vrt_for_id, idaho_id, rec["properties"])
+    vrt = yield deferToThread(vrt_for_id, idaho_id, rec["properties"], level)
     returnValue(vrt)
 
 
