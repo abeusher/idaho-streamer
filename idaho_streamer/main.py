@@ -57,7 +57,7 @@ def footprint(request, idaho_id="unknown"):
         returnValue(json_dumps(rec))
 
 
-@app.route("/<string:idaho_id>/toa_reflectance.vrt")
+@app.route("/<string:idaho_id>/toa.vrt")
 @inlineCallbacks
 def toa_vrt(request, idaho_id="unknown"):
     rec = yield db.idaho_footprints.find_one({"id": idaho_id})
