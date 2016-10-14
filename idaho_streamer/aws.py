@@ -73,7 +73,7 @@ def vrt_for_id(idaho_id, meta, level=0):
                                                                                         idaho_id=idaho_id, x=x, y=y, fmt=md["nativeTileFileFormat"].lower())
             src = ET.SubElement(band, "ComplexSource")
             ET.SubElement(src, "SourceFilename").text = "/vsis3/idaho-images/{}".format(path)
-            ET.SubElement(src, "SourceBand", text=str(bidx))
+            ET.SubElement(src, "SourceBand").text =str(bidx)
             ET.SubElement(src, "SrcRect", {"xOff": str(md["tileXOffset"]), "yOff": str(md["tileYOffset"]),
                                             "xSize": str(md["tileXSize"]), "ySize": str(md["tileYSize"])})
             ET.SubElement(src, "DstRect", {"xOff": str(x*md["tileXSize"]), "yOff": str(y*md["tileYSize"]),
