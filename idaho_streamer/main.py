@@ -45,7 +45,7 @@ def index(request):
     # TODO: disable directory listing
     return File(os.path.join(os.path.dirname(__file__), "public"))
 
-@app.route("/<string:idaho_id>")
+@app.route("/<string:idaho_id>.json")
 @inlineCallbacks
 def footprint(request, idaho_id="unknown"):
     rec = yield db.idaho_footprints.find_one({"id": idaho_id})
@@ -57,7 +57,7 @@ def footprint(request, idaho_id="unknown"):
         returnValue(json_dumps(rec))
 
 
-@app.route("/toa/<string:idaho_id>.vrt")
+@app.route("/<string:idaho_id>/toa_reflectance.vrt")
 @inlineCallbacks
 def toa_vrt(request, idaho_id="unknown"):
     rec = yield db.idaho_footprints.find_one({"id": idaho_id})
