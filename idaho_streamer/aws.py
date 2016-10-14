@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from boto.s3.connection import S3Connection
+from boto.s3.key import Key
 from boto import connect_sqs
 from boto.dynamodb2.table import Table
 from boto.dynamodb2 import connect_to_region
@@ -16,6 +17,8 @@ _dbconn = connect_to_region("us-east-1", profile_name="dg")
 _images = Table('IDAHOIngestedImages', connection=_dbconn)
 _s3conn = S3Connection(profile_name="dg")
 _bucket = _s3conn.get_bucket('idaho-images')
+_vrtcache = _s3conn.get_bucket('idaho-vrt')
+LABEL = "toa"
 _sqsconn = connect_sqs(profile_name="dg")
 _queue = _sqsconn.get_queue('timbr-idaho-streaming')
 
@@ -46,6 +49,13 @@ DTLOOKUP = {
 }
 
 def vrt_for_id(idaho_id, meta, level=0):
+    # Check if vrt is in s3 vrt cache
+    cache_key = "{idaho_id}/{label}/{level}.vrt".format(idaho_id=idaho_id, label=LABEL, level=str(level))
+    key = _vrtcache.get_key(cache_key)
+    if key is not None:
+        # If it is there, return it.
+        return(key.get_contents_as_string())
+    # otherwise continue
     if level > 0:
         rrds = json.loads(_bucket.get_key('{}/rrds.json'.format(idaho_id)).get_contents_as_string())
         try:
@@ -89,4 +99,9 @@ def vrt_for_id(idaho_id, meta, level=0):
                                                     "BlockXSize": "128", "BlockYSize": "128", "DataType": DTLOOKUP.get(md["dataType"], "Byte")})
             ET.SubElement(src, "ScaleOffset").text = str(gains_offsets[i][1])
             ET.SubElement(src, "ScaleRatio").text = str(gains_offsets[i][0])
-    returnValue(ET.tostring(vrt))
+
+    # cache the result
+    result = ET.tostring(vrt)
+    key = _vrtcache.new_key(cache_key)
+    key.set_contents_from_string(result)
+    return result
