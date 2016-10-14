@@ -65,7 +65,10 @@ def toa_vrt(request, idaho_id="unknown", level=0):
         raise NotFound
     request.setHeader("Content-Type","application/xml")
     request.setResponseCode(200)
-    vrt = yield deferToThread(vrt_for_id, idaho_id, rec["properties"], level)
+    try:
+        vrt = yield deferToThread(vrt_for_id, idaho_id, rec["properties"], level)
+    except IndexError:
+        raise NotFound
     returnValue(vrt)
 
 
