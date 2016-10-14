@@ -25,8 +25,8 @@ def get_idaho_metadata(idaho_id, files=['IMD','TIL']):
     return { f: _bucket.get_key('{}/{}.metadata'.format(prefix, f)).get_contents_as_string() for f in files}
 
 
-def iterimages(limit=10):
-    for rec in _images.scan(limit=limit):
+def iterimages():
+    for rec in _images.scan():
         yield dict(rec.items())["IDAHO_ID"]
 
 
