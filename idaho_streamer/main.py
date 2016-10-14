@@ -4,6 +4,7 @@ import json
 from bson.json_util import dumps as json_dumps
 from klein import Klein
 from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.threads import deferToThread
 from twisted.internet.task import LoopingCall
 from twisted.web.static import File
 from twisted.python import log
@@ -14,6 +15,7 @@ from dateutil.parser import parse as parse_date
 from idaho_streamer.util import sleep
 from idaho_streamer.error import BadRequest, NotAcceptable, NotFound
 from idaho_streamer.db import db
+from idaho_streamer.aws import vrt_for_id
 
 app = Klein()
 MAX_POST_BODY = 1024*1024 # 1MB
@@ -43,7 +45,7 @@ def index(request):
     # TODO: disable directory listing
     return File(os.path.join(os.path.dirname(__file__), "public"))
 
-@app.route("/footprint/<string:idaho_id>")
+@app.route("/<string:idaho_id>")
 @inlineCallbacks
 def footprint(request, idaho_id="unknown"):
     rec = yield db.idaho_footprints.find_one({"id": idaho_id})
@@ -53,6 +55,18 @@ def footprint(request, idaho_id="unknown"):
         request.setHeader('Content-Type', 'application/json')
         request.setResponseCode(200)
         returnValue(json_dumps(rec))
+
+
+@app.route("/toa/<string:idaho_id>.vrt")
+@inlineCallbacks
+def toa_vrt(request, idaho_id="unknown"):
+    rec = yield db.idaho_footprints.find_one({"id": idaho_id})
+    if rec is None:
+        raise NotFound
+    request.setHeader("Content-Type","application/xml")
+    request.setResponseCode(200)
+    vrt = yield deferToThread(vrt_for_id, idaho_id, rec["properties"])
+    returnValue(vrt)
 
 
 @app.route("/filter", methods=["POST"])
