@@ -8,7 +8,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from itertools import product
 import hashlib
 import json
-import xml.etree.ElementTree as ET
+import xml.etree.cElementTree as ET
 
 from idaho_streamer.util import calc_toa_gain_offset
 
