@@ -2,7 +2,6 @@ attrs==15.2.0
 boto==2.39.0
 cffi==1.7.0
 click==6.6
-cryptography==1.5
 dateutils==0.6.6
 enum34==1.1.6
 future==0.15.2
