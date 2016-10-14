@@ -38,6 +38,12 @@ def remove_batch(batch):
     for msg in batch:
         _queue.delete_message(msg)
 
+DTLOOKUP = {
+    "UNSIGNED_SHORT": "UInt16",
+    "UNSIGNED_INT": "UInt16",
+    "BYTE": "Byte",
+    "FLOAT": "Float32"
+}
 
 def vrt_for_id(idaho_id, meta, level=0):
     if level > 0:
@@ -79,7 +85,8 @@ def vrt_for_id(idaho_id, meta, level=0):
             ET.SubElement(src, "DstRect", {"xOff": str(x*md["tileXSize"]), "yOff": str(y*md["tileYSize"]),
                                             "xSize": str(md["tileXSize"]), "ySize": str(md["tileYSize"])})
 
-
+            ET.SubElement(src, "SourceProperties", {"RasterXSize": str(md["tileXSize"]), "RasterYSize": str(md["tileYSize"]),
+                                                    "BlockXSize": "128", "BlockYSize": "128", "DataType": DTLOOKUP.get(md["dataType"], "Byte")})
             ET.SubElement(src, "ScaleOffset").text = str(gains_offsets[i][1])
             ET.SubElement(src, "ScaleRatio").text = str(gains_offsets[i][0])
     returnValue(ET.tostring(vrt))
