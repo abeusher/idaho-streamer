@@ -56,14 +56,15 @@ def vrt_for_id(idaho_id, meta, level=0):
         # If it is there, return it.
         return(key.get_contents_as_string())
     # otherwise continue
+    # NOTE: validate=False saves a REST call, but involves trusting that the key exists
     if level > 0:
         rrds = json.loads(_bucket.get_key('{}/rrds.json'.format(idaho_id)).get_contents_as_string())
         try:
             idaho_id = rrds["reducedResolutionDataset"][level]["targetImage"]
         except:
             raise IndexError("Reduced level {} not available".format(level))
-    md = json.loads(_bucket.get_key('{}/image.json'.format(idaho_id)).get_contents_as_string())
-    warp = json.loads(_bucket.get_key('{}/native_warp_spec.json'.format(idaho_id)).get_contents_as_string())
+    md = json.loads(_bucket.get_key('{}/image.json'.format(idaho_id), validate=False).get_contents_as_string())
+    warp = json.loads(_bucket.get_key('{}/native_warp_spec.json'.format(idaho_id), validate=False).get_contents_as_string())
     gains_offsets = calc_toa_gain_offset(meta)
     tfm = warp["targetGeoTransform"]
     vrt = ET.Element("VRTDataset", {"rasterXSize": str(md["tileXSize"]*md["numXTiles"]),
