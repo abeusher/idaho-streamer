@@ -8,43 +8,43 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
     reflectance_scales = [e[1] for e in gain_offsets]
     radiance_offsets = [e[2] for e in gain_offsets]
     return {
-      "id": uuid.uuid4(),
+      "id": str(uuid.uuid4()),
       "edges": [
         {
-          "id": uuid.uuid4(),
+          "id": str(uuid.uuid4()),
           "index": 1,
           "source": "MsSourceImage",
           "destination": "MsOrtho"
         },
         {
-          "id": uuid.uuid4(),
+          "id":  str(uuid.uuid4()),
           "index": 1,
           "source": "MsOrtho",
           "destination": "RadianceGain"
         },
         {
-          "id": uuid.uuid4(),
+          "id": str(uuid.uuid4()),
           "index": 1,
           "source": "RadianceGain",
           "destination": "RadianceOffset"
         },
         {
-          "id": uuid.uuid4(),
+          "id": str(uuid.uuid4()),
           "index": 1,
           "source": "RadianceOffset",
           "destination": "ReflectanceScale"
         },
         {
-          "id": uuid.uuid4(),
+          "id":  str(uuid.uuid4()),
           "index": 1,
           "source": "RadianceOffset",
-          "destination": "Radiance"
+          "destination": "TOARadiance"
         },
         {
-          "id": uuid.uuid4(),
+          "id":  str(uuid.uuid4()),
           "index": 1,
           "source": "ReflectanceScale",
-          "destination": "Reflectance"
+          "destination": "TOAReflectance"
         }
       ],
       "nodes": [
