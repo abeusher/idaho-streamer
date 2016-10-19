@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 from itertools import chain
 import json
+import hashlib
 
 from dateutil.parser import parse as parse_date
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -16,10 +17,13 @@ from gbdxtools import Interface
 from shapely.geometry import Polygon, mapping
 from shapely.wkt import loads as wkt_loads
 import mercantile
+import treq
 
 from idaho_streamer.db import db, init as init_db
 from idaho_streamer.aws import get_idaho_metadata, iterimages, next_batch, remove_batch
 from idaho_streamer.util import extract_idaho_metadata
+
+VIRTUAL_IPE_URL = ""
 
 def dt_to_ts(dt, fmt='%Y-%m-%dT%H:%M:%S.%f'):
     s = dt.strftime(fmt)[:-3] + "Z"
@@ -29,7 +33,17 @@ def dt_to_ts(dt, fmt='%Y-%m-%dT%H:%M:%S.%f'):
 def populate(iterable):
     for idaho_id in iterable:
         footprint = yield generate_footprint(idaho_id)
+        ipe_graph = json.dumpse(generate_ipe_graph(idaho_id, footprint.properties))
+        digest = hashlib.md5(ipe_graph).hexdigest()
+        footprint["ipe_graph_digest"] = digest
         if footprint is not None:
+            fprec = yield db.idaho_footprints.find_one({"id": footprint["id"]})
+            if (fprec is not None) and fprec.get("ipe_graph_digest") == digest:
+                ipe_id = fprec.get("ipe_graph_id")
+            else:
+                resp = yield treq.post(VIRTUAL_IPE_URL, ipe_graph, headers={'Content-Type': ['application/json']}))
+                ipe_id = resp.content()
+            footprint["ipe_graph_id"] = ipe_id
             yield db.idaho_footprints.replace_one({"id": footprint["id"]}, footprint, upsert=True)
             log.msg("Added/Updated record for Idaho Id: {}".format(idaho_id))
         else:
