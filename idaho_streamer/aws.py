@@ -11,6 +11,7 @@ import hashlib
 import json
 import xml.etree.cElementTree as ET
 
+from idaho_streamer.ipe import VIRTUAL_IPE_URL
 from idaho_streamer.util import calc_toa_gain_offset
 
 _dbconn = connect_to_region("us-east-1", profile_name="dg")
@@ -48,7 +49,7 @@ DTLOOKUP = {
     "FLOAT": "Float32"
 }
 
-def vrt_for_id(idaho_id, meta, level=0):
+def vrt_for_id(idaho_id, meta, level=0, node="TOAReflectance"):
     # Check if vrt is in s3 vrt cache
     cache_key = "{idaho_id}/{label}/{level}.vrt".format(idaho_id=idaho_id, label=LABEL, level=str(level))
     key = _vrtcache.get_key(cache_key)
@@ -65,7 +66,6 @@ def vrt_for_id(idaho_id, meta, level=0):
             raise IndexError("Reduced level {} not available".format(level))
     md = json.loads(_bucket.get_key('{}/image.json'.format(idaho_id), validate=False).get_contents_as_string())
     warp = json.loads(_bucket.get_key('{}/native_warp_spec.json'.format(idaho_id), validate=False).get_contents_as_string())
-    gains_offsets = calc_toa_gain_offset(meta)
     tfm = warp["targetGeoTransform"]
     vrt = ET.Element("VRTDataset", {"rasterXSize": str(md["tileXSize"]*md["numXTiles"]),
                                 "rasterYSize": str(md["tileYSize"]*md["numYTiles"])})
@@ -83,13 +83,13 @@ def vrt_for_id(idaho_id, meta, level=0):
         bidx = i+1
         band = ET.SubElement(vrt, "VRTRasterBand", {"dataType": "Float32", "band": str(bidx)})
         for x, y in product(xrange(md["numXTiles"]), xrange(md["numYTiles"])):
-            formatted_string = "{}-{}-{}".format(idaho_id, x, y)
-            hashed_string = hashlib.md5(formatted_string).hexdigest()
-            prefix = hashed_string[:4]
-            path = "{partition}{prefix}/{idaho_id}/{x}/{y}.{fmt}".format(partition=md["tilePartition"], prefix=prefix, hashed_string=hashed_string,
-                                                                                        idaho_id=idaho_id, x=x, y=y, fmt=md["nativeTileFileFormat"].lower())
             src = ET.SubElement(band, "ComplexSource")
-            ET.SubElement(src, "SourceFilename").text = "/vsis3/idaho-images/{}".format(path)
+            ET.SubElement(src, "SourceFilename").text = "/vsicurl/{baseurl}/{bucket}/{ipe_graph_id}/{node}/{x}/{y}".format(baseurl=VIRTUAL_IPE_URL,
+                                                                                                                           buckt="idaho-images",
+                                                                                                                           ipe_graph_id=meta["ipe_graph_id"],
+                                                                                                                           node=node,
+                                                                                                                           x=x,
+                                                                                                                           y=y)
             ET.SubElement(src, "SourceBand").text =str(bidx)
             ET.SubElement(src, "SrcRect", {"xOff": str(md["tileXOffset"]), "yOff": str(md["tileYOffset"]),
                                             "xSize": str(md["tileXSize"]), "ySize": str(md["tileYSize"])})
@@ -98,9 +98,6 @@ def vrt_for_id(idaho_id, meta, level=0):
 
             ET.SubElement(src, "SourceProperties", {"RasterXSize": str(md["tileXSize"]), "RasterYSize": str(md["tileYSize"]),
                                                     "BlockXSize": "128", "BlockYSize": "128", "DataType": DTLOOKUP.get(md["dataType"], "Byte")})
-            ET.SubElement(src, "ScaleOffset").text = str(gains_offsets[i][1])
-            ET.SubElement(src, "ScaleRatio").text = str(gains_offsets[i][0])
-
     # cache the result
     result = ET.tostring(vrt)
     key = _vrtcache.new_key(cache_key)
