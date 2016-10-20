@@ -99,7 +99,7 @@ def vrt_for_id(idaho_id, meta, level=0, node="TOAReflectance"):
         for x, y in product(xrange(md["numXTiles"]), xrange(md["numYTiles"])):
             src = ET.SubElement(band, "ComplexSource")
             ET.SubElement(src, "SourceFilename").text = "/vsicurl/{baseurl}/{bucket}/{ipe_graph_id}/{node}/{x}/{y}".format(baseurl=VIRTUAL_IPE_URL,
-                                                                                                                           buckt="idaho-images",
+                                                                                                                           bucket="idaho-images",
                                                                                                                            ipe_graph_id=meta["ipe_graph_id"],
                                                                                                                            node=node,
                                                                                                                            x=x,
