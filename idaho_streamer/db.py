@@ -29,6 +29,7 @@ def create_collections(db):
             created.append(key)
     # idaho_footprints index
     yield db.idaho_footprints.create_index(qf.sort(qf.DESCENDING("_acquisitionDate")))
+    yield db.idaho_footprints.create_index(qf.sort(qf.ASCENDING("properties.cloud_cover")))
     yield db.idaho_footprints.create_index(qf.sort(qf.DESCENDING("id")))
     log.msg("Created collections: {}".format(",".join(created)))
     returnValue(created)
