@@ -58,7 +58,7 @@ def invoke_lambda(fname, idaho_id, z, x, y):
     cache_key = "{idaho_id}/{fname}/{z}/{x}/{y}".format(idaho_id=idaho_id, fname=fname, z=z, x=x, y=y)
     key = _tilecache.get_key(cache_key)
     if key is None:
-        payload = {"idaho_id": idaho_id, "z": z, "x": x, "y": y}
+        payload = {"idaho_id": idaho_id, "z": z, "x": x, "y": y, "cache_key": cache_key}
         log.msg("Attempting to call: {}".format(fname))
         key = _tilecache.get_key(_lambda.invoke(FunctionName=fname, Payload=json.dumps(payload)), validate=False)
     return "http://s3.amazonaws.com/{bucket}/{cache_key}".format(bucket=key.bucket.name, cache_key=cache_key)
@@ -99,7 +99,7 @@ def vrt_for_id(idaho_id, meta, level=0, node="TOAReflectance"):
         for x, y in product(xrange(md["numXTiles"]), xrange(md["numYTiles"])):
             src = ET.SubElement(band, "ComplexSource")
             ET.SubElement(src, "SourceFilename").text = "/vsicurl/{baseurl}/{bucket}/{ipe_graph_id}/{node}/{x}/{y}".format(baseurl=VIRTUAL_IPE_URL,
-                                                                                                                           bucket="idaho-images",
+                                                                                                                           bucket="idaho-virtual",
                                                                                                                            ipe_graph_id=meta["ipe_graph_id"],
                                                                                                                            node=node,
                                                                                                                            x=x,
