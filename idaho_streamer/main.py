@@ -15,7 +15,7 @@ from dateutil.parser import parse as parse_date
 from idaho_streamer.util import sleep
 from idaho_streamer.error import BadRequest, NotAcceptable, NotFound
 from idaho_streamer.db import db
-from idaho_streamer.aws import vrt_for_id
+from idaho_streamer.aws import vrt_for_id, invoke_lambda
 
 app = Klein()
 MAX_POST_BODY = 1024*1024 # 1MB
@@ -45,6 +45,7 @@ def index(request):
     # TODO: disable directory listing
     return File(os.path.join(os.path.dirname(__file__), "public"))
 
+
 @app.route("/<string:idaho_id>.json")
 @inlineCallbacks
 def footprint(request, idaho_id="unknown"):
@@ -57,20 +58,25 @@ def footprint(request, idaho_id="unknown"):
         returnValue(json_dumps(rec))
 
 
-@app.route("/<string:idaho_id>/toa/<int:level>.vrt")
+@app.route("/<string:idaho_id>/<string:node>/<int:level>.vrt")
 @inlineCallbacks
-def toa_vrt(request, idaho_id="unknown", level=0):
+def toa_vrt(request, idaho_id="unknown", node="TOAReflectance", level=0):
     rec = yield db.idaho_footprints.find_one({"id": idaho_id})
     if rec is None:
         raise NotFound
     request.setHeader("Content-Type","application/xml")
     request.setResponseCode(200)
     try:
-        vrt = yield deferToThread(vrt_for_id, idaho_id, rec["properties"], level)
+        vrt = yield deferToThread(vrt_for_id, idaho_id, rec["properties"], level, node)
     except IndexError:
         raise NotFound
     returnValue(vrt)
 
+@app.route("/<string:idaho_id>/<string:lambda_name/<int:z>/<int:x>/<int:y>")
+@inlineCallbacks
+def tms(request, idaho_id="unknown", lambda_name="default", z=0, x=0, y=0):
+    tile_url = deferToThread(invoke_lambda, idaho_id, lambda_name, z, x, y)
+    request.redirect(tile_url)
 
 @app.route("/filter", methods=["POST"])
 @inlineCallbacks
