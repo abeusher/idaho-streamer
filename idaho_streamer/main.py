@@ -75,7 +75,7 @@ def toa_vrt(request, idaho_id="unknown", node="TOAReflectance", level=0):
 @app.route("/<string:idaho_id>/<string:lambda_name>/<int:z>/<int:x>/<int:y>")
 @inlineCallbacks
 def tms(request, idaho_id="unknown", lambda_name="default", z=0, x=0, y=0):
-    tile_url = deferToThread(invoke_lambda, idaho_id, lambda_name, z, x, y)
+    tile_url = yield deferToThread(invoke_lambda, lambda_name, idaho_id, z, x, y)
     request.redirect(tile_url)
 
 @app.route("/filter", methods=["POST"])

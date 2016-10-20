@@ -7,6 +7,7 @@ from boto.dynamodb2 import connect_to_region as db_connect_to_region
 import boto3
 from twisted.internet.threads import deferToThread
 from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.python import log
 from itertools import product
 import hashlib
 import json
@@ -55,11 +56,12 @@ DTLOOKUP = {
 
 def invoke_lambda(fname, idaho_id, z, x, y):
     cache_key = "{idaho_id}/{fname}/{z}/{x}/{y}".format(idaho_id=idaho_id, fname=fname, z=z, x=x, y=y)
-    key = _tilecache.get(cache_key)
+    key = _tilecache.get_key(cache_key)
     if key is None:
         payload = {"idaho_id": idaho_id, "z": z, "x": x, "y": y}
-        key = _tilecache.get(_lambda.invoke(FunctionName=fname, Payload=json.dumps(payload)), validate=False)
-    return key.generate_url()
+        log.msg("Attempting to call: {}".format(fname))
+        key = _tilecache.get_key(_lambda.invoke(FunctionName=fname, Payload=json.dumps(payload)), validate=False)
+    return "http://s3.amazonaws.com/{bucket}/{cache_key}".format(bucket=key.bucket.name, cache_key=cache_key)
 
 def vrt_for_id(idaho_id, meta, level=0, node="TOAReflectance"):
     # Check if vrt is in s3 vrt cache

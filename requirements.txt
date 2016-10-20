@@ -1,5 +1,6 @@
 attrs==15.2.0
 boto==2.39.0
+boto3==1.4.1
 cffi==1.7.0
 click==6.6
 dateutils==0.6.6
@@ -28,6 +29,7 @@ service-identity==16.0.0
 Shapely==1.5.16
 six==1.10.0
 sympy==1.0
+treq==15.1.0
 Twisted==16.4.1
 txmongo==16.1.0
 Werkzeug==0.11.11
