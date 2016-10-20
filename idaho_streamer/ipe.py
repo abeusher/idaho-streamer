@@ -34,7 +34,7 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
         {
           "id": str(uuid.uuid4()),
           "index": 1,
-          "source": "TOAReflectance",
+          "source": "TOARadiance",
           "destination": "TOAReflectance"
         }
       ],
