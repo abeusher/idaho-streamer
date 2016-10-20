@@ -51,7 +51,7 @@ DTLOOKUP = {
 
 def vrt_for_id(idaho_id, meta, level=0, node="TOAReflectance"):
     # Check if vrt is in s3 vrt cache
-    cache_key = "{idaho_id}/{label}/{level}.vrt".format(idaho_id=idaho_id, label=LABEL, level=str(level))
+    cache_key = "{idaho_id}/{node}/{level}.vrt".format(idaho_id=idaho_id, node=node, level=str(level))
     key = _vrtcache.get_key(cache_key)
     if key is not None:
         # If it is there, return it.
