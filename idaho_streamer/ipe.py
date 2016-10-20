@@ -17,30 +17,24 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
           "id": str(uuid.uuid4()),
           "index": 1,
           "source": "MsSourceImage",
-          "destination": "RadianceGain"
+          "destination": "MsFloatImage"
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "index": 1,
+            "source": "MsFloatImage",
+            "destination": "RadianceGain"
         },
         {
           "id": str(uuid.uuid4()),
           "index": 1,
           "source": "RadianceGain",
-          "destination": "RadianceOffset"
+          "destination": "TOARadiance"
         },
         {
           "id": str(uuid.uuid4()),
           "index": 1,
           "source": "RadianceOffset",
-          "destination": "ReflectanceScale"
-        },
-        {
-          "id":  str(uuid.uuid4()),
-          "index": 1,
-          "source": "RadianceOffset",
-          "destination": "TOARadiance"
-        },
-        {
-          "id":  str(uuid.uuid4()),
-          "index": 1,
-          "source": "ReflectanceScale",
           "destination": "TOAReflectance"
         }
       ],
@@ -55,6 +49,13 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
           }
         },
         {
+            "id": "MsFloatImage",
+            "operator": "Format",
+            "parameters": {
+                "dataType": "TYPE_FLOAT"
+            }
+        }
+        {
             "id": "RadianceGain",
             "operator": "MultiplyConst",
             "parameters": {
@@ -62,33 +63,18 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
             }
         },
         {
-            "id": "RadianceOffset",
+            "id": "TOARadiance",
             "operator": "AddConst",
             "parameters": {
                 "constants": json.dumps(radiance_offsets)
             }
         },
         {
-            "id": "ReflectanceScale",
+            "id": "TOAReflectance",
             "operator": "MultiplyConst",
             "parameters": {
                 "constants": json.dumps(reflectance_scales)
             }
-        },
-        {
-            "id": "TOARadiance",
-            "operator": "Format",
-            "parameters": {
-                "dataType": "TYPE_FLOAT"
-            }
-        },
-        {
-            "id": "TOAReflectance",
-            "operator": "Format",
-            "parameters": {
-                "dataType": "TYPE_FLOAT"
-            }
-        },
-
+        }
       ]
     }
