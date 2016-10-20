@@ -24,6 +24,15 @@ from idaho_streamer.aws import get_idaho_metadata, iterimages, next_batch, remov
 from idaho_streamer.util import extract_idaho_metadata
 from idaho_streamer.ipe import VIRTUAL_IPE_URL, generate_ipe_graph
 
+gbdx = None
+def refresh_gbdx():
+    global gbdx
+    gbdx = Interface(client_id=os.environ.get("GBDX_CLIENT_ID"),
+                     client_secret=os.environ.get("GBDX_CLIENT_SECRET"),
+                     username=os.environ.get("GBDX_USERNAME"),
+                     password=os.environ.get("GBDX_PASSWORD"))
+refresh_gbdx()
+
 def dt_to_ts(dt, fmt='%Y-%m-%dT%H:%M:%S.%f'):
     s = dt.strftime(fmt)[:-3] + "Z"
     return s
@@ -40,9 +49,16 @@ def populate(iterable):
             if (fprec is not None) and fprec["properties"].get("ipe_graph_digest") == digest:
                 ipe_id = fprec["properties"].get("ipe_graph_id")
             else:
-                resp = yield treq.post("{}/graph".format(VIRTUAL_IPE_URL), ipe_graph, headers={'Content-Type': ['application/json']})
+                resp = yield treq.post("{}/graph".format(VIRTUAL_IPE_URL), ipe_graph,
+                                       headers={"Authorization": "Bearer {}".format(gbdx.gbdx_connection.token.get("access_token")),
+                                                "Content-Type": "application/json"})
+                if resp.code != 201:
+                    yield deferToThread(refresh_gbdx)
+                    resp = yield treq.post("{}/graph".format(VIRTUAL_IPE_URL), ipe_graph,
+                                           headers={"Authorization": "Bearer {}".format(gbdx.gbdx_connection.token.get("access_token")),
+                                                    "Content-Type": "application/json"})
                 log.msg(resp.code)
-                ipe_id = yield resp.json()
+                ipe_id = yield resp.content()
                 log.msg("Created IPE Graph: {}".format(ipe_id))
             footprint["properties"]["ipe_graph_id"] = ipe_id
             yield db.idaho_footprints.replace_one({"id": footprint["id"]}, footprint, upsert=True)
