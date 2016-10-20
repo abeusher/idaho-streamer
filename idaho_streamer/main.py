@@ -11,11 +11,14 @@ from twisted.python import log
 from txmongo import filter as qf
 from shapely.geometry import shape, Polygon
 from dateutil.parser import parse as parse_date
+import treq
 
 from idaho_streamer.util import sleep
-from idaho_streamer.error import BadRequest, NotAcceptable, NotFound
+from idaho_streamer.error import BadRequest, NotAcceptable, NotFound, Unauthorized
 from idaho_streamer.db import db
 from idaho_streamer.aws import vrt_for_id, invoke_lambda
+
+from lambdify import create as create_lambda
 
 app = Klein()
 MAX_POST_BODY = 1024*1024 # 1MB
@@ -39,12 +42,33 @@ def not_acceptable(request, failure):
     request.setResponseCode(406)
     return failure.getErrorMessage()
 
+@app.handle_errors(Unauthorized)
+def unauthorized(request, failure):
+    request.setResponseCode(401)
+    return failure.getErrorMessage()
+
 
 @app.route("/", branch=True)
 def index(request):
     # TODO: disable directory listing
     return File(os.path.join(os.path.dirname(__file__), "public"))
 
+
+@app.route("/lambdify", methods=["POST"])
+@inlineCallbacks
+def lambdifier(request):
+    params = parse_json_body(request.content.read())
+    # TODO: Validate a GBDX Token
+    auth_headers = request.requestHeaders.getRawHeaders("Authorization")
+    if auth_headers is None or len(auth_headers) == 0:
+        raise Unauthorized("A valid GBDX token is required.")
+    else:
+        auth_header = auth_headers[0]
+    resp = yield treq.get("https://geobigdata.io/workflows/v1/authtest",
+                          headers={"Authorization": auth_header})
+    if resp.code != 200:
+        raise Unauthorized("A valid GBDX token is required.")
+    yield deferToThread(create_lambda, params["name"], fn=params["code"])
 
 @app.route("/<string:idaho_id>.json")
 @inlineCallbacks
