@@ -149,7 +149,8 @@ def backfill(request, fromDate, toDate, bbox, minCloudCover, maxCloudCover, dela
 def stream(request, from_id, bbox, minCloudCover, maxCloudCover, delay):
     while True:
         ref = dt.datetime.now()
-        docs = yield db.idaho_footprints.find({"_id": {"$gt": from_id}}, filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
+        docs = yield db.idaho_footprints.find({"_id": {"$gt": from_id, "$gte": minCloudCover, "$lt": maxCloudCover}},
+                                              filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
         for doc in docs:
             if bbox is None or bbox.intersects(shape(doc["geometry"])):
                 request.write(json_dumps(doc))
