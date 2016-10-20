@@ -111,7 +111,7 @@ def vrt_for_id(idaho_id, meta, level=0, node="TOAReflectance"):
                                             "xSize": str(md["tileXSize"]), "ySize": str(md["tileYSize"])})
 
             ET.SubElement(src, "SourceProperties", {"RasterXSize": str(md["tileXSize"]), "RasterYSize": str(md["tileYSize"]),
-                                                    "BlockXSize": "128", "BlockYSize": "128", "DataType": DTLOOKUP.get(md["dataType"], "Byte")})
+                                                    "BlockXSize": "128", "BlockYSize": "128", "DataType": "Float32"})
     # cache the result
     result = ET.tostring(vrt)
     key = _vrtcache.new_key(cache_key)
