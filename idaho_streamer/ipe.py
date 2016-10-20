@@ -54,7 +54,7 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
             "parameters": {
                 "dataType": "TYPE_FLOAT"
             }
-        }
+        },
         {
             "id": "RadianceGain",
             "operator": "MultiplyConst",
