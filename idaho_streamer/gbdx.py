@@ -43,6 +43,7 @@ def populate(iterable):
         footprint = yield generate_footprint(idaho_id)
         if footprint is not None:
             ipe_graph = json.dumps(generate_ipe_graph(idaho_id, footprint["properties"]))
+            log.msg(ipe_graph)
             digest = hashlib.md5(ipe_graph).hexdigest()
             footprint["properties"]["ipe_graph_digest"] = digest
             fprec = yield db.idaho_footprints.find_one({"id": footprint["id"]})
@@ -50,13 +51,12 @@ def populate(iterable):
                 ipe_id = fprec["properties"].get("ipe_graph_id")
             else:
                 resp = yield treq.post("{}/graph".format(VIRTUAL_IPE_URL), ipe_graph,
-                                       headers={"Authorization": "Bearer {}".format(gbdx.gbdx_connection.token.get("access_token")),
-                                                "Content-Type": "application/json"})
-                if resp.code != 201:
-                    yield deferToThread(refresh_gbdx)
-                    resp = yield treq.post("{}/graph".format(VIRTUAL_IPE_URL), ipe_graph,
-                                           headers={"Authorization": "Bearer {}".format(gbdx.gbdx_connection.token.get("access_token")),
-                                                    "Content-Type": "application/json"})
+                                       headers={"Content-Type": "application/json"})
+                # if resp.code != 201:
+                #     yield deferToThread(refresh_gbdx)
+                #     resp = yield treq.post("{}/graph".format(VIRTUAL_IPE_URL), ipe_graph,
+                #                            headers={"Authorization": "Bearer {}".format(gbdx.gbdx_connection.token.get("access_token")),
+                #                                     "Content-Type": "application/json"})
                 log.msg(resp.code)
                 ipe_id = yield resp.content()
                 log.msg("Created IPE Graph: {}".format(ipe_id))
