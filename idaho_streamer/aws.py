@@ -3,7 +3,8 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto import connect_sqs
 from boto.dynamodb2.table import Table
-from boto.dynamodb2 import connect_to_region
+from boto.dynamodb2 import connect_to_region as db_connect_to_region
+import boto3
 from twisted.internet.threads import deferToThread
 from twisted.internet.defer import inlineCallbacks, returnValue
 from itertools import product
@@ -14,14 +15,17 @@ import xml.etree.cElementTree as ET
 from idaho_streamer.ipe import VIRTUAL_IPE_URL
 from idaho_streamer.util import calc_toa_gain_offset
 
-_dbconn = connect_to_region("us-east-1", profile_name="dg")
+_dbconn = db_connect_to_region("us-east-1", profile_name="dg")
 _images = Table('IDAHOIngestedImages', connection=_dbconn)
 _s3conn = S3Connection(profile_name="dg")
 _bucket = _s3conn.get_bucket('idaho-images')
 _vrtcache = _s3conn.get_bucket('idaho-vrt')
+_tilecache = _s3conn.get_bucket('idaho-lambda')
 LABEL = "toa"
 _sqsconn = connect_sqs(profile_name="dg")
 _queue = _sqsconn.get_queue('timbr-idaho-streaming')
+_session = boto3.Session(profile_name='dg')
+_lambda = _session.client("lambda")
 
 
 def get_idaho_metadata(idaho_id, files=['IMD','TIL']):
@@ -48,6 +52,14 @@ DTLOOKUP = {
     "BYTE": "Byte",
     "FLOAT": "Float32"
 }
+
+def invoke_lambda(fname, idaho_id, z, x, y):
+    cache_key = "{idaho_id}/{fname}/{z}/{x}/{y}".format(idaho_id=idaho_id, fname=fname, z=z, x=x, y=y)
+    key = _tilecache.get(cache_key)
+    if key is None:
+        payload = {"idaho_id": idaho_id, "z": z, "x": x, "y": y}
+        key = _tilecache.get(_lambda.invoke(FunctionName=fname, Payload=json.dumps(payload)), validate=False)
+    return key.generate_url()
 
 def vrt_for_id(idaho_id, meta, level=0, node="TOAReflectance"):
     # Check if vrt is in s3 vrt cache
