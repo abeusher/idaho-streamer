@@ -1,4 +1,5 @@
 import uuid
+import json
 
 from idaho_streamer.util import calc_toa_gain_offset
 
@@ -16,12 +17,6 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
           "id": str(uuid.uuid4()),
           "index": 1,
           "source": "MsSourceImage",
-          "destination": "MsOrtho"
-        },
-        {
-          "id":  str(uuid.uuid4()),
-          "index": 1,
-          "source": "MsOrtho",
           "destination": "RadianceGain"
         },
         {
@@ -60,29 +55,24 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
           }
         },
         {
-          "id": "MsOrtho",
-          "operator": "GridOrthorectify",
-          "parameters": {}
-        },
-        {
             "id": "RadianceGain",
             "operator": "MultiplyConst",
             "parameters": {
-                "constants": radiance_scales
+                "constants": json.dumps(radiance_scales)
             }
         },
         {
             "id": "RadianceOffset",
             "operator": "AddConst",
             "parameters": {
-                "constants": radiance_offsets
+                "constants": json.dumps(radiance_offsets)
             }
         },
         {
             "id": "ReflectanceScale",
             "operator": "MultiplyConst",
             "parameters": {
-                "constants": reflectance_scales
+                "constants": json.dumps(reflectance_scales)
             }
         },
         {
