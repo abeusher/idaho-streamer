@@ -1,7 +1,6 @@
 from twisted.internet import reactor, defer
 import pvl
 import geoio.constants as constants
-import requests
 import numpy as np
 import ephem
 from bson.json_util import loads as json_loads
