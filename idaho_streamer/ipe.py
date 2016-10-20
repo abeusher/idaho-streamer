@@ -2,11 +2,13 @@ import uuid
 
 from idaho_streamer.util import calc_toa_gain_offset
 
+VIRTUAL_IPE_URL = "http://virtualidaho-env.us-east-1.elasticbeanstalk.com/v1"
+
 def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
-    gains_offsets = calc_toa_gain_offsets(meta)
-    radiance_scales = [e[0] for e in gain_offsets]
-    reflectance_scales = [e[1] for e in gain_offsets]
-    radiance_offsets = [e[2] for e in gain_offsets]
+    gains_offsets = calc_toa_gain_offset(meta)
+    radiance_scales = [e[0] for e in gains_offsets]
+    reflectance_scales = [e[1] for e in gains_offsets]
+    radiance_offsets = [e[2] for e in gains_offsets]
     return {
       "id": str(uuid.uuid4()),
       "edges": [
@@ -53,7 +55,7 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
           "operator": "IdahoRead",
           "parameters": {
             "bucketName": bucket,
-            "imageId": image_id,
+            "imageId": idaho_id,
             "objectStore": "S3"
           }
         },
