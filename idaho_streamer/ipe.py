@@ -52,7 +52,7 @@ def generate_ipe_graph(idaho_id, meta, bucket="idaho-images"):
             "id": "MsFloatImage",
             "operator": "Format",
             "parameters": {
-                "dataType": "TYPE_FLOAT"
+                "dataType": "4"
             }
         },
         {
