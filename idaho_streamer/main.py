@@ -160,8 +160,7 @@ def parse_bbox(bbox):
 def backfill(request, fromDate, toDate, minCloudCover, maxCloudCover, bbox, delay):
     last_rec = yield db.idaho_footprints.find({}, fields={"_id": True}, limit=1, filter=qf.sort(qf.DESCENDING("_id")))
     last_id = last_rec[0]["_id"]
-    docs, d  = yield db.idaho_footprints.find({"_acquisitionDate": {"$gte": fromDate, "$lt": toDate,
-                                                                    "$gte": minCloudCover, "$lt": maxCloudCover}},
+    docs, d  = yield db.idaho_footprints.find({"_acquisitionDate": {"$gte": fromDate, "$lt": toDate}},
                                          fields={"_acquisitionDate": False}, cursor=True,
                                          filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
     while docs:
