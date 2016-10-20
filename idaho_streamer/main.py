@@ -90,11 +90,14 @@ def filter_post(request):
         delay = float(params.get("delay", "0.0"))
     except ValueError:
         raise BadRequest("Delay should be a floating point number")
+    minCloudCover = params.get("minCloudCover", 0.0)
+    maxCloudCover = params.get("maxCloudCover", float('inf'))
+
     request.setHeader('Content-Type', 'application/json')
     request.setResponseCode(200)
-    last_id = yield backfill(request, fromDate, toDate, bbox, delay)
+    last_id = yield backfill(request, fromDate, toDate, minCloudCover, maxCloudCover, bbox, delay)
     if enable_streaming:
-        yield stream(request, last_id, bbox, delay)
+        yield stream(request, last_id, bbox, minCloudCover, maxCloudCover, delay)
 
 
 def parse_json_body(content):
@@ -124,10 +127,11 @@ def parse_bbox(bbox):
 
 
 @inlineCallbacks
-def backfill(request, fromDate, toDate, bbox, delay):
+def backfill(request, fromDate, toDate, bbox, minCloudCover, maxCloudCover, delay):
     last_rec = yield db.idaho_footprints.find({}, fields={"_id": True}, limit=1, filter=qf.sort(qf.DESCENDING("_id")))
     last_id = last_rec[0]["_id"]
-    docs, d  = yield db.idaho_footprints.find({"_acquisitionDate": {"$gte": fromDate, "$lt": toDate}},
+    docs, d  = yield db.idaho_footprints.find({"_acquisitionDate": {"$gte": fromDate, "$lt": toDate,
+                                                                    "$gte": minCloudCover, "$lt": maxCloudCover}},
                                          fields={"_acquisitionDate": False}, cursor=True,
                                          filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
     while docs:
@@ -142,7 +146,7 @@ def backfill(request, fromDate, toDate, bbox, delay):
 
 
 @inlineCallbacks
-def stream(request, from_id, bbox, delay):
+def stream(request, from_id, bbox, minCloudCover, maxCloudCover, delay):
     while True:
         ref = dt.datetime.now()
         docs = yield db.idaho_footprints.find({"_id": {"$gt": from_id}}, filter=qf.sort(qf.ASCENDING("_acquisitionDate")))
