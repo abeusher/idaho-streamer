@@ -55,7 +55,7 @@ DTLOOKUP = {
 }
 
 def invoke_lambda(fname, idaho_id, z, x, y):
-    cache_key = "{idaho_id}/{fname}/{z}/{x}/{y}".format(idaho_id=idaho_id, fname=fname, z=z, x=x, y=y)
+    cache_key = "{fname}/{idaho_id}/{z}/{x}/{y}".format(idaho_id=idaho_id, fname=fname, z=z, x=x, y=y)
     key = _tilecache.get_key(cache_key)
     if key is None:
         payload = {"idaho_id": idaho_id, "z": z, "x": x, "y": y, "cache_key": cache_key}
