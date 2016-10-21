@@ -51,7 +51,7 @@ def unauthorized(request, failure):
 @app.route("/public/", branch=True)
 def index(request):
     # TODO: disable directory listing
-    return File(os.path.join(os.path.dirname(__file__), "public"))
+    return File(os.path.join("./idaho-streamer", "idaho_streamer", "public"))
 
 
 @app.route("/lambdify", methods=["POST"])
