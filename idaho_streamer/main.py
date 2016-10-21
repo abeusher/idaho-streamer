@@ -48,7 +48,7 @@ def unauthorized(request, failure):
     return failure.getErrorMessage()
 
 
-@app.route("/", branch=True)
+@app.route("/public/", branch=True)
 def index(request):
     # TODO: disable directory listing
     return File(os.path.join(os.path.dirname(__file__), "public"))
