@@ -105,7 +105,7 @@ def fixmissing():
     docs, d = yield db.idaho_footprints.find({}, fields={"_acquisitionDate": False}, cursor=True)
 
     while docs:
-        pending = [doc for doc in docs if "ipe_graph_id" not in doc]
+        pending = [doc for doc in docs if "ipe_graph_id" not in doc["properties"]]
         yield populate(pending)
         docs, d = yield d
 
