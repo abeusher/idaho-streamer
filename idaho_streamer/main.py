@@ -18,7 +18,7 @@ from idaho_streamer.error import BadRequest, NotAcceptable, NotFound, Unauthoriz
 from idaho_streamer.db import db
 from idaho_streamer.aws import vrt_for_id, invoke_lambda
 
-from lambdify import create as create_lambda
+from lambdify import deploy as create_lambda
 
 app = Klein()
 MAX_POST_BODY = 1024*1024 # 1MB
