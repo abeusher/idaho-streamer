@@ -18,6 +18,7 @@ from shapely.geometry import Polygon, mapping
 from shapely.wkt import loads as wkt_loads
 import mercantile
 import treq
+from boto.exception import S3ResponseError
 
 from idaho_streamer.db import db, init as init_db
 from idaho_streamer.aws import get_idaho_metadata, iterimages, next_batch, remove_batch
@@ -40,7 +41,10 @@ def dt_to_ts(dt, fmt='%Y-%m-%dT%H:%M:%S.%f'):
 @inlineCallbacks
 def populate(iterable):
     for idaho_id in iterable:
-        footprint = yield generate_footprint(idaho_id)
+        try:
+            footprint = yield generate_footprint(idaho_id)
+        except S3ResponseError:
+            footprint = None
         if footprint is not None:
             ipe_graph = json.dumps(generate_ipe_graph(idaho_id, footprint["properties"]))
             log.msg(ipe_graph)
