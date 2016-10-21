@@ -96,6 +96,14 @@ def generate_footprint(idaho_id):
 def backfill():
     yield populate(iterimages())
 
+@inlineCallbacks
+def fixmissing():
+    docs, d = yield db.idaho_footprints.find({}, fields={"_acquisitionDate": False}, cursor=True)
+
+    while docs:
+        pending = [doc for doc in docs if "ipe_graph_id" not in doc]
+        yield populate(pending)
+        docs, d = yield d
 
 @inlineCallbacks
 def poll():
@@ -112,8 +120,9 @@ def poll():
 @inlineCallbacks
 def run(interval):
     yield init_db()
-    yield backfill()
-    log.msg("Done Backfilling.  Starting Live Stream...")
+    # yield backfill()
+    # log.msg("Done Backfilling.  Starting Live Stream...")
+    yield fixmissing()
     task = LoopingCall(poll)
     task.start(interval)
     returnValue(task)
