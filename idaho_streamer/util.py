@@ -102,8 +102,6 @@ def calc_toa_gain_offset(meta):
     theta_s = 90-float(meta['mean_sun_el'])
     scale2 = (d_es ** 2 * np.pi) / (e_sun * np.cos(np.deg2rad(theta_s)))
 
-    offset = offset * scale2
-
     # Return scaled data
     # Radiance = Scale * Image + offset, Reflectance = Radiance * Scale2
     return zip(scale, scale2, offset)
